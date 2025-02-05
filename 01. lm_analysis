@@ -1,0 +1,115 @@
+rm(list = ls())
+
+#############################################################################
+###LOADING LIBRARIES
+library(survival)
+library(haven)
+library(foreign)
+library(readxl)
+library(dplyr)
+#install.packages("OlinkAnalyze")
+library(OlinkAnalyze)
+#install.packages("readr")
+library(readr)
+#install.packages("dplyr")
+library(dplyr)
+#install.packages("ggplot2")
+library(ggplot2)
+#install.packages("stringr")
+library(stringr)
+#install.packages("readxl")
+library(readxl)
+#install.packages("ggplotify")
+#library(ggplotify)
+#install.packages("pheatmap")
+library(pheatmap)
+#install.packages("foreign")
+library(foreign)
+#install.packages("haven")
+library(haven)
+#install.packages("stringi")
+library(stringi)
+#install.packages("magrittr")
+library(magrittr)
+#install.packages("readxl")
+library(readxl)
+#install.packages("tidyr")
+library(tidyr)
+#install.packages("mice")
+library(mice)
+#install.packages("finalfit")
+library(finalfit)
+
+#install.packages("impute")
+#library(impute)
+
+#install.packages("VIM")
+#library(VIM)
+
+#install.packages("tidyverse")
+library(tidyverse)
+
+data<-readRDS("data.rds")
+
+#####################################################################
+####REGRESSION
+proteins_to_exclude <- c()
+
+df=data
+colnames(df)
+
+skimr::skim(df)
+
+protein_columns <- setdiff(colnames(df)[c(41:316)], proteins_to_exclude)
+
+# Initialize an empty list to store results for each predictor
+results_list <- list()
+
+# Define predictors
+predictors <- c("casp_score_hedonic_w4","cesd_score_w4", , "casp_score_hedonic_w4", "sclife_score_w4")
+
+# Loop through each predictor
+for (predictor in predictors) {
+  
+  # Create empty vectors to store results for the current predictor
+  p_values <- numeric(length(protein_columns))
+  p_values_named <- setNames(numeric(length(protein_columns)), protein_columns)
+  fdr_p_values_named <- setNames(numeric(length(protein_columns)), protein_columns)
+  se_values_named <- setNames(numeric(length(protein_columns)), protein_columns)
+  coefficients_named <- setNames(numeric(length(protein_columns)), protein_columns)
+  
+  # Loop through each protein
+  for (i in 1:length(protein_columns)) {
+    # Fit the linear model
+    model <- lm(as.formula(paste(protein_columns[i], "~", predictor, "+ sex + scale(age) + race + wealth_quintile + cvd + cancer + arthritis + stroke + diabetes + lung_disease + smoke_3 + bmi")), data = df)
+    #
+    # Extract model summary statistics
+    fixed_effects_summary <- summary(model)$coefficients
+    coefficient_protein <- fixed_effects_summary[2, "Estimate"]
+    se_protein <- fixed_effects_summary[2, "Std. Error"]
+    p_value_protein <- fixed_effects_summary[2, "Pr(>|t|)"]
+    
+    # Store extracted values
+    p_values[i] <- p_value_protein
+    p_values_named[protein_columns[i]] <- p_value_protein
+    fdr_p_values_named[protein_columns[i]] <- p.adjust(p_value_protein, method = "fdr", n = length(protein_columns))
+    se_values_named[protein_columns[i]] <- se_protein
+    coefficients_named[protein_columns[i]] <- coefficient_protein
+  }
+  
+  # Store the results for the current predictor in a data frame
+  results_table <- data.frame(
+    Coefficients = coefficients_named,
+    SE = se_values_named,
+    P_Value = p_values_named,
+    FDR_P_Value = fdr_p_values_named
+  )
+  
+  # Add the results table to the results list with the predictor as the name
+  results_list[[predictor]] <- results_table
+}
+
+# Write each results table to a CSV file
+for (predictor in names(results_list)) {
+  write.csv(results_list[[predictor]], paste0("dir_", predictor, "_lm.csv"))
+}
