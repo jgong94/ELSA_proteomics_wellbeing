@@ -81,7 +81,7 @@ for (predictor in predictors) {
   # Loop through each protein
   for (i in 1:length(protein_columns)) {
     # Fit the linear model
-    model <- lm(as.formula(paste(protein_columns[i], "~", predictor, "+ sex + scale(age) + race + wealth_quintile + cvd + cancer + arthritis + stroke + diabetes + lung_disease + smoke_3 + bmi")), data = df)
+    model <- lm(as.formula(paste(protein_columns[i], "~", predictor, "+ sex + age + race + wealth_quintile + cvd + cancer + arthritis + stroke + diabetes + lung_disease + smoke_3 + bmi")), data = df)
     #
     # Extract model summary statistics
     fixed_effects_summary <- summary(model)$coefficients
